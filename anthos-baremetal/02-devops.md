@@ -232,5 +232,5 @@ gcloud compute ssh {{vm-workst}} --tunnel-through-iap --command "KUBECONFIG=bmct
 すべて完了しました。リソースの削除にお進みください。
 
 ```bash
-teachme ~/cloudshell_open/gcp-getting-started-lab-jp/appmod/anthos-baremetal/09-teardown.md
+teachme ~/cloudshell_open/appdev-anthos-baremetal-handson/anthos-baremetal/09-teardown.md
 ```

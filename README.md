@@ -10,14 +10,14 @@
 
 ```sh
 cloudshell_open --page "shell" \
-    --repo_url "https://github.com/GoogleCloudPlatform/gcp-getting-started-lab-jp.git" \
+    --repo_url "https://github.com/google-cloud-japan/appdev-anthos-baremetal-handson.git" \
     --tutorial "appmod/anthos-baremetal/01-setup.md"
 ```
 
 3. Cloud Shell の再起動や予期せずチュートリアルが消えてしまった場合は、それぞれ以下で再開できます。
 
 ```sh
-teachme ~/cloudshell_open/gcp-getting-started-lab-jp/appmod/anthos-baremetal/01-setup.md
-teachme ~/cloudshell_open/gcp-getting-started-lab-jp/appmod/anthos-baremetal/02-devops.md
-teachme ~/cloudshell_open/gcp-getting-started-lab-jp/appmod/anthos-baremetal/09-teardown.md
+teachme ~/cloudshell_open/appdev-anthos-baremetal-handson/anthos-baremetal/01-setup.md
+teachme ~/cloudshell_open/appdev-anthos-baremetal-handson/anthos-baremetal/02-devops.md
+teachme ~/cloudshell_open/appdev-anthos-baremetal-handson/anthos-baremetal/09-teardown.md
 ```
