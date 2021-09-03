@@ -7,22 +7,16 @@
 <walkthrough-watcher-constant key="subnet-range" value="10.128.0.0/16"></walkthrough-watcher-constant>
 <walkthrough-watcher-constant key="sa" value="sa-baremetal"></walkthrough-watcher-constant>
 <walkthrough-watcher-constant key="cluster" value="baremetal-trial"></walkthrough-watcher-constant>
-<walkthrough-watcher-constant key="anthos-ver" value="1.7.1"></walkthrough-watcher-constant>
+<walkthrough-watcher-constant key="anthos-ver" value="1.8.3"></walkthrough-watcher-constant>
 <walkthrough-watcher-constant key="vm-workst" value="workstation"></walkthrough-watcher-constant>
-<walkthrough-watcher-constant key="vm-hybrid" value="hybrid-master"></walkthrough-watcher-constant>
-<walkthrough-watcher-constant key="vm-worker" value="hybrid-worker"></walkthrough-watcher-constant>
+<walkthrough-watcher-constant key="vm-admin" value="anthos-admin"></walkthrough-watcher-constant>
+<walkthrough-watcher-constant key="vm-worker" value="anthos-worker"></walkthrough-watcher-constant>
 
 ## 始めましょう
 
 [Anthos clusters on Bare Metal](https://cloud.google.com/anthos/clusters/docs/bare-metal?hl=ja) を Google Compute Engine 上に構築する手順です。
 
-本手順では以下の図のようにマルチクラスタ、つまり Admin Cluster が複数の User Cluster を管理できる構成をとります。
-
-![マルチクラスタ](https://raw.github.com/wiki/pottava/google-cloud-tutorials/anthos-baremetal/multi-cluster.png)
-
-実際には [ハイブリッド クラスタ](https://cloud.google.com/anthos/clusters/docs/bare-metal/1.7/installing/install-prep#hybrid_cluster_deployment) 1 つの構成です。
-
-![完成図](https://raw.github.com/wiki/pottava/google-cloud-tutorials/anthos-baremetal/1-5.png)
+本手順ではエッジ プロファイルを有効化したスタンドアロン クラスタ構成をとります。
 
 **所要時間**: 約 45 分
 
@@ -90,7 +84,7 @@ Google Cloud では利用したい機能ごとに、有効化を行う必要が�
 ここでは、以降のハンズオンで利用する機能を事前に有効化しておきます。
 
 ```bash
-gcloud services enable anthos.googleapis.com anthosgke.googleapis.com cloudresourcemanager.googleapis.com container.googleapis.com gkeconnect.googleapis.com gkehub.googleapis.com serviceusage.googleapis.com stackdriver.googleapis.com monitoring.googleapis.com logging.googleapis.com
+gcloud services enable anthos.googleapis.com anthosgke.googleapis.com cloudresourcemanager.googleapis.com container.googleapis.com gkeconnect.googleapis.com gkehub.googleapis.com serviceusage.googleapis.com stackdriver.googleapis.com monitoring.googleapis.com logging.googleapis.com opsconfigmonitoring.googleapis.com anthosaudit.googleapis.com
 ```
 
 `Operation 〜 finished successfully.` と表示が出ることを確認します。
@@ -134,6 +128,7 @@ gcloud projects add-iam-policy-binding ${GOOGLE_CLOUD_PROJECT} --member="service
 gcloud projects add-iam-policy-binding ${GOOGLE_CLOUD_PROJECT} --member="serviceAccount:{{sa}}@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com" --role="roles/monitoring.metricWriter"
 gcloud projects add-iam-policy-binding ${GOOGLE_CLOUD_PROJECT} --member="serviceAccount:{{sa}}@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com" --role="roles/monitoring.dashboardEditor"
 gcloud projects add-iam-policy-binding ${GOOGLE_CLOUD_PROJECT} --member="serviceAccount:{{sa}}@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com" --role="roles/stackdriver.resourceMetadata.writer"
+gcloud projects add-iam-policy-binding ${GOOGLE_CLOUD_PROJECT} --member="serviceAccount:{{sa}}@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com" --role="roles/opsconfigmonitoring.resourceMetadata.write"
 ```
 
 ## モニタリング ダッシュボードの有効化
@@ -174,30 +169,27 @@ gcloud compute firewall-rules create allow-from-internal --network={{vpc}} --dir
 ![VM](https://raw.github.com/wiki/pottava/google-cloud-tutorials/anthos-baremetal/1-2.png)
 
 - 管理ワークステーション: **n2-standard-2**
-- ハイブリッド クラスタ マスタ兼用 VM: **n2-standard-8**
+- スタンドアロン クラスタ VM: **n2-standard-4**
 - ノードプール VM: **n2-standard-2**
 
 の VM 3 台を起動します。
 
 ```text
 gcloud compute instances create {{vm-workst}} \
-    --zone {{zone}} --machine-type "n1-standard-2" \
+    --zone {{zone}} --machine-type "n2-standard-2" \
     --image-family=ubuntu-2004-lts --image-project=ubuntu-os-cloud \
-    --min-cpu-platform "Intel Skylake" \
     --boot-disk-size 100G --boot-disk-type pd-standard \
     --network {{vpc}} --subnet {{subnet}} --can-ip-forward \
     --scopes cloud-platform --metadata=enable-oslogin=FALSE
-gcloud compute instances create {{vm-hybrid}} \
-    --zone {{zone}} --machine-type "n1-standard-8" \
+gcloud compute instances create {{vm-admin}} \
+    --zone {{zone}} --machine-type "n2-standard-4" \
     --image-family=ubuntu-2004-lts --image-project=ubuntu-os-cloud \
-    --min-cpu-platform "Intel Skylake" \
     --boot-disk-size 300G --boot-disk-type pd-standard \
     --network {{vpc}} --subnet {{subnet}} --can-ip-forward \
     --scopes cloud-platform --metadata=enable-oslogin=FALSE
 gcloud compute instances create {{vm-worker}} \
-    --zone {{zone}} --machine-type "n1-standard-2" \
+    --zone {{zone}} --machine-type "n2-standard-2" \
     --image-family=ubuntu-2004-lts --image-project=ubuntu-os-cloud \
-    --min-cpu-platform "Intel Skylake" \
     --boot-disk-size 200G --boot-disk-type pd-standard \
     --network {{vpc}} --subnet {{subnet}} --can-ip-forward \
     --scopes cloud-platform --metadata=enable-oslogin=FALSE
@@ -216,7 +208,7 @@ gcloud compute instances create {{vm-worker}} \
 以下のコマンドで SSH ができる状態になるまで待機します。
 
 ```text
-declare -a VMs=("{{vm-workst}}" "{{vm-hybrid}}" "{{vm-worker}}")
+declare -a VMs=("{{vm-workst}}" "{{vm-admin}}" "{{vm-worker}}")
 for vm in "${VMs[@]}"; do
     while ! gcloud compute ssh ${vm} --tunnel-through-iap --command "echo Hi from ${vm}"; do
         echo "Trying to SSH into ${vm} failed. Sleeping for 5 seconds."
@@ -229,7 +221,7 @@ done
 
 ```bash
 ip1=$(gcloud compute instances describe {{vm-workst}} --format='get(networkInterfaces[0].networkIP)')
-ip2=$(gcloud compute instances describe {{vm-hybrid}} --format='get(networkInterfaces[0].networkIP)')
+ip2=$(gcloud compute instances describe {{vm-admin}} --format='get(networkInterfaces[0].networkIP)')
 ip3=$(gcloud compute instances describe {{vm-worker}} --format='get(networkInterfaces[0].networkIP)')
 declare -a IPs=("${ip1}" "${ip2}" "${ip3}")
 echo ${IPs[@]}
@@ -255,8 +247,6 @@ for ip in ${IPs[@]}; do
 done
 sudo ip addr add 10.200.0.$i/24 dev vxlan0
 sudo ip link set up dev vxlan0
-sudo systemctl stop apparmor.service
-sudo systemctl disable apparmor.service
 EOF
     i=$((i+1))
 done
@@ -265,7 +255,7 @@ done
 これにより、VM 間は 10.200.0.0/24 ネットワークで L2 接続性が確立しました。各 VM の IP アドレスは以下のとおりです。
 
 - 管理ワークステーション: 10.200.0.2
-- ハイブリッド クラスタ マスタ兼用 VM: 10.200.0.3
+- スタンドアロン クラスタ VM: 10.200.0.3
 - ノードプール VM: 10.200.0.4
 
 ## 管理ワークステーションのセットアップ
@@ -311,7 +301,7 @@ sudo su -
 ```bash
 ssh-keygen -t rsa -N "" -f /root/.ssh/id_rsa
 sed 's/ssh-rsa/root:ssh-rsa/' /root/.ssh/id_rsa.pub > ssh-metadata
-gcloud compute instances add-metadata {{vm-hybrid}} --zone {{zone}} --metadata-from-file ssh-keys=ssh-metadata
+gcloud compute instances add-metadata {{vm-admin}} --zone {{zone}} --metadata-from-file ssh-keys=ssh-metadata
 gcloud compute instances add-metadata {{vm-worker}} --zone {{zone}} --metadata-from-file ssh-keys=ssh-metadata
 exit
 ```
@@ -323,14 +313,14 @@ sudo ssh -o IdentitiesOnly=yes -o StrictHostKeyChecking=no 10.200.0.3 hostname
 sudo ssh -o IdentitiesOnly=yes -o StrictHostKeyChecking=no 10.200.0.4 hostname
 ```
 
-## ハイブリッド クラスタ構築準備
+## スタンドアロン クラスタ構築準備
 
 **（管理ワークステーション上で実行してください）**
 
 Anthos クラスタと Google Cloud と通信するためのキーの名前を決め、
 
 ```bash
-export HYBRID_CLUSTER={{cluster}}
+export ANTHOS_CLUSTER={{cluster}}
 export GOOGLE_APPLICATION_CREDENTIALS={{sa}}-creds.json
 ```
 
@@ -344,7 +334,7 @@ gcloud iam service-accounts keys create "${GOOGLE_APPLICATION_CREDENTIALS}" --ia
 Anthos clusters on Bare Metal の設定雛形を出力し、中身を眺めてみましょう。
 
 ```bash
-bmctl create config -c "${HYBRID_CLUSTER}"
+bmctl create config -c "${ANTHOS_CLUSTER}"
 cat bmctl-workspace/{{cluster}}/{{cluster}}.yaml
 ```
 
@@ -366,10 +356,11 @@ metadata:
 apiVersion: baremetal.cluster.gke.io/v1
 kind: Cluster
 metadata:
-  name: ${HYBRID_CLUSTER}
+  name: ${ANTHOS_CLUSTER}
   namespace: cluster-admins
 spec:
-  type: hybrid
+  type: standalone
+  profile: edge
   anthosBareMetalVersion: {{anthos-ver}}
   gkeConnect:
     projectID: {{project-id}}
@@ -399,6 +390,7 @@ spec:
     projectID: {{project-id}}
     location: asia-northeast1
     enableApplication: true
+    disableCloudAuditLogging: false
   storage:
     lvpNodeMounts:
       path: /mnt/localpv-disk
@@ -411,31 +403,31 @@ spec:
     autoRepair:
       enabled: true
     podDensity:
-      maxPodsPerNode: 250
+      maxPodsPerNode: 110
     containerRuntime: containerd
 ---
 apiVersion: baremetal.cluster.gke.io/v1
 kind: NodePool
 metadata:
   name: node-pool-1
-  namespace: cluster-admins
+  namespace: cluster-standalone1
 spec:
-  clusterName: ${HYBRID_CLUSTER}
+  clusterName: ${ANTHOS_CLUSTER}
   nodes:
   - address: 10.200.0.4
 EOF
 ```
 
-## ハイブリッド クラスタの作成
+## スタンドアロン クラスタの作成
 
 **（管理ワークステーション上で実行してください）**
 
 ![Anthos](https://raw.github.com/wiki/pottava/google-cloud-tutorials/anthos-baremetal/1-5.png)
 
-以下コマンドを実行し、ハイブリッド クラスタを作成します。クラスタ構築には 20 分弱かかります。
+以下コマンドを実行し、スタンドアロン クラスタを作成します。クラスタ構築には 20 分弱かかります。
 
 ```bash
-sudo bmctl create cluster -c "${HYBRID_CLUSTER}"
+sudo bmctl create cluster -c "${ANTHOS_CLUSTER}"
 ```
 
 ## Cloud Shell の再開
@@ -455,24 +447,22 @@ gcloud compute ssh {{vm-workst}} --tunnel-through-iap
 ワークステーション上の環境変数も再設定しましょう。
 
 ```bash
-export HYBRID_CLUSTER={{cluster}}
+export ANTHOS_CLUSTER={{cluster}}
 export GOOGLE_APPLICATION_CREDENTIALS={{sa}}-creds.json
 ```
 
-## ハイブリッド クラスタの確認
+## クラスタの確認
 
 **（管理ワークステーション上で実行してください）**
 
-### **ハイブリッド クラスタの起動確認**
+### **クラスタの起動確認**
 
-ハイブリッド クラスタ作成後、以下コマンドでハイブリッド クラスタのノード情報が取得できることを確認します。
+クラスタ作成後、以下コマンドでクラスタのノード情報が取得できることを確認します。
 
 ```bash
-export KUBECONFIG="bmctl-workspace/${HYBRID_CLUSTER}/${HYBRID_CLUSTER}-kubeconfig"
+export KUBECONFIG="bmctl-workspace/${ANTHOS_CLUSTER}/${ANTHOS_CLUSTER}-kubeconfig"
 kubectl get nodes
 ```
-
-ハイブリッド クラスタは Admin Cluster と User Cluster の両方を兼ねているため、Anthos のコンソールにも情報が連携されています。
 
 **Anthos** セクションを選びます。
 
