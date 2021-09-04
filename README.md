@@ -6,6 +6,7 @@
 
 - [Anthos clusters on bare metal](https://cloud.google.com/anthos/clusters/docs/bare-metal/1.8/concepts/about-bare-metal?hl=ja) クラスタの構築
 - [ACM Config Sync](https://cloud.google.com/anthos-config-management/docs/config-sync-overview?hl=ja) による設定の同期
+- [ACM Policy Controller](https://cloud.google.com/anthos-config-management/docs/concepts/policy-controller?hl=ja) によるポリシー制御
 
 1. 以下をクリックし、Cloud Shell 環境を起動してください。
 
@@ -16,7 +17,7 @@
 ```sh
 cloudshell_open --page "shell" \
     --repo_url "https://github.com/google-cloud-japan/appdev-anthos-baremetal-handson.git" \
-    --tutorial "appmod/anthos-baremetal/01-setup.md"
+    --tutorial "anthos-baremetal/01-setup.md"
 ```
 
 3. Cloud Shell の再起動や予期せずチュートリアルが消えてしまった場合は、それぞれ以下で再開できます。
@@ -24,5 +25,6 @@ cloudshell_open --page "shell" \
 ```sh
 teachme ~/cloudshell_open/appdev-anthos-baremetal-handson/anthos-baremetal/01-setup.md
 teachme ~/cloudshell_open/appdev-anthos-baremetal-handson/anthos-baremetal/02-configsync.md
+teachme ~/cloudshell_open/appdev-anthos-baremetal-handson/anthos-baremetal/03-policycontroller.md
 teachme ~/cloudshell_open/appdev-anthos-baremetal-handson/anthos-baremetal/09-teardown.md
 ```

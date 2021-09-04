@@ -181,7 +181,7 @@ gcloud beta container hub config-management apply \
 `Status` が `SYNCED` になるまで待ちます。
 
 ```bash
-watch -n 5 gcloud beta container hub config-management status
+watch -n 10 gcloud beta container hub config-management status
 ```
 
 リソースが同期されたことを確認します。
@@ -196,8 +196,8 @@ kubectl get cm -n hello
 
 <walkthrough-conclusion-trophy></walkthrough-conclusion-trophy>
 
-すべて完了しました。リソースの削除にお進みください。
+すべて完了しました。次のステップにお進みください。
 
 ```bash
-teachme ~/cloudshell_open/appdev-anthos-baremetal-handson/anthos-baremetal/09-teardown.md
+teachme ~/cloudshell_open/appdev-anthos-baremetal-handson/anthos-baremetal/03-policycontroller.md
 ```
