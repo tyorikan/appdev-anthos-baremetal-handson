@@ -609,5 +609,5 @@ resource.type="k8s_container" resource.labels.cluster_name="{{cluster}}" resourc
 **（管理ワークステーション上ではなく、Cloud Shell にもどり、以下を実行してください）**
 
 ```bash
-teachme ~/cloudshell_open/appdev-anthos-baremetal-handson/anthos-baremetal/02-devops.md
+teachme ~/cloudshell_open/appdev-anthos-baremetal-handson/anthos-baremetal/02-configsync.md
 ```

@@ -7,8 +7,8 @@
 <walkthrough-watcher-constant key="sa" value="sa-baremetal"></walkthrough-watcher-constant>
 <walkthrough-watcher-constant key="cluster" value="baremetal-trial"></walkthrough-watcher-constant>
 <walkthrough-watcher-constant key="vm-workst" value="workstation"></walkthrough-watcher-constant>
-<walkthrough-watcher-constant key="vm-hybrid" value="hybrid-master"></walkthrough-watcher-constant>
-<walkthrough-watcher-constant key="vm-worker" value="hybrid-worker"></walkthrough-watcher-constant>
+<walkthrough-watcher-constant key="vm-admin" value="anthos-admin"></walkthrough-watcher-constant>
+<walkthrough-watcher-constant key="vm-worker" value="anthos-worker"></walkthrough-watcher-constant>
 
 ## プロジェクトの設定
 
@@ -43,7 +43,7 @@ VM を停止し、
 
 ```bash
 gcloud compute instances delete {{vm-workst}} --zone {{zone}} --quiet
-gcloud compute instances delete {{vm-hybrid}} --zone {{zone}} --quiet
+gcloud compute instances delete {{vm-admin}} --zone {{zone}} --quiet
 gcloud compute instances delete {{vm-worker}} --zone {{zone}} --quiet
 ```
 
@@ -66,7 +66,7 @@ gcloud compute networks delete {{vpc}} --quiet
 サービス アカウントも削除しましょう。
 
 ```bash
-gcloud iam service-accounts delete "{{sa}}@{{project-id}}.iam.gserviceaccount.com" --quiet
+gcloud iam service-accounts delete "{{sa}}@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com" --quiet
 ```
 
 ## プロジェクトの削除
@@ -74,7 +74,7 @@ gcloud iam service-accounts delete "{{sa}}@{{project-id}}.iam.gserviceaccount.co
 もしこの手順のためにプロジェクトを作成していた場合は、不要な料金の発生を避けるためにプロジェクトを削除してください。
 
 ```bash
-gcloud projects delete {{project-id}}
+gcloud projects delete ${GOOGLE_CLOUD_PROJECT}
 ```
 
 ## これで終わりです

@@ -1,6 +1,11 @@
-# アプリケーション モダナイゼーション
+# Anthos clusters on bare metal ハンズオン
 
-## Anthos clusters on bare metal の構築
+## v1.8 の構築と ACM によるクラスタ運用
+
+このチュートリアルでは以下を体験できます。
+
+- [Anthos clusters on bare metal](https://cloud.google.com/anthos/clusters/docs/bare-metal/1.8/concepts/about-bare-metal?hl=ja) クラスタの構築
+- [ACM Config Sync](https://cloud.google.com/anthos-config-management/docs/config-sync-overview?hl=ja) による設定の同期
 
 1. 以下をクリックし、Cloud Shell 環境を起動してください。
 
@@ -18,6 +23,6 @@ cloudshell_open --page "shell" \
 
 ```sh
 teachme ~/cloudshell_open/appdev-anthos-baremetal-handson/anthos-baremetal/01-setup.md
-teachme ~/cloudshell_open/appdev-anthos-baremetal-handson/anthos-baremetal/02-devops.md
+teachme ~/cloudshell_open/appdev-anthos-baremetal-handson/anthos-baremetal/02-configsync.md
 teachme ~/cloudshell_open/appdev-anthos-baremetal-handson/anthos-baremetal/09-teardown.md
 ```
