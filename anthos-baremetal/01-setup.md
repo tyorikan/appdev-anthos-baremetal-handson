@@ -16,7 +16,7 @@
 
 [Anthos clusters on Bare Metal](https://cloud.google.com/anthos/clusters/docs/bare-metal?hl=ja) を Google Compute Engine 上に構築する手順です。
 
-本手順ではエッジ プロファイルを有効化したスタンドアロン クラスタ構成をとります。
+本手順では Edge プロファイルを有効化した[スタンドアロン クラスタ](https://cloud.google.com/anthos/clusters/docs/bare-metal/1.8/installing/creating-clusters/standalone-cluster-creation?hl=ja)構成をとります。
 
 **所要時間**: 約 45 分
 
@@ -128,7 +128,7 @@ gcloud projects add-iam-policy-binding ${GOOGLE_CLOUD_PROJECT} --member="service
 gcloud projects add-iam-policy-binding ${GOOGLE_CLOUD_PROJECT} --member="serviceAccount:{{sa}}@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com" --role="roles/monitoring.metricWriter"
 gcloud projects add-iam-policy-binding ${GOOGLE_CLOUD_PROJECT} --member="serviceAccount:{{sa}}@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com" --role="roles/monitoring.dashboardEditor"
 gcloud projects add-iam-policy-binding ${GOOGLE_CLOUD_PROJECT} --member="serviceAccount:{{sa}}@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com" --role="roles/stackdriver.resourceMetadata.writer"
-gcloud projects add-iam-policy-binding ${GOOGLE_CLOUD_PROJECT} --member="serviceAccount:{{sa}}@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com" --role="roles/opsconfigmonitoring.resourceMetadata.write"
+gcloud projects add-iam-policy-binding ${GOOGLE_CLOUD_PROJECT} --member="serviceAccount:{{sa}}@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com" --role="roles/opsconfigmonitoring.resourceMetadata.writer"
 ```
 
 ## モニタリング ダッシュボードの有効化
@@ -166,8 +166,6 @@ gcloud compute firewall-rules create allow-from-internal --network={{vpc}} --dir
 
 オンプレミス想定の環境を作成するため、仮想マシンを起動していきます。Anthos clusters on Bare Metal の詳細な導入要件は [こちら](https://cloud.google.com/anthos/clusters/docs/bare-metal/1.7/installing/install-prereq?hl=ja) です。
 
-![VM](https://raw.github.com/wiki/pottava/google-cloud-tutorials/anthos-baremetal/1-2.png)
-
 - 管理ワークステーション: **n2-standard-2**
 - スタンドアロン クラスタ VM: **n2-standard-4**
 - ノードプール VM: **n2-standard-2**
@@ -180,13 +178,15 @@ gcloud compute instances create {{vm-workst}} \
     --image-family=ubuntu-2004-lts --image-project=ubuntu-os-cloud \
     --boot-disk-size 100G --boot-disk-type pd-standard \
     --network {{vpc}} --subnet {{subnet}} --can-ip-forward \
-    --scopes cloud-platform --metadata=enable-oslogin=FALSE
+    --scopes cloud-platform --metadata=enable-oslogin=FALSE \
+    --async
 gcloud compute instances create {{vm-admin}} \
     --zone {{zone}} --machine-type "n2-standard-4" \
     --image-family=ubuntu-2004-lts --image-project=ubuntu-os-cloud \
     --boot-disk-size 300G --boot-disk-type pd-standard \
     --network {{vpc}} --subnet {{subnet}} --can-ip-forward \
-    --scopes cloud-platform --metadata=enable-oslogin=FALSE
+    --scopes cloud-platform --metadata=enable-oslogin=FALSE \
+    --async
 gcloud compute instances create {{vm-worker}} \
     --zone {{zone}} --machine-type "n2-standard-2" \
     --image-family=ubuntu-2004-lts --image-project=ubuntu-os-cloud \
@@ -210,7 +210,7 @@ gcloud compute instances create {{vm-worker}} \
 ```text
 declare -a VMs=("{{vm-workst}}" "{{vm-admin}}" "{{vm-worker}}")
 for vm in "${VMs[@]}"; do
-    while ! gcloud compute ssh ${vm} --tunnel-through-iap --command "echo Hi from ${vm}"; do
+    while ! gcloud compute ssh ${vm} --tunnel-through-iap --command "echo Hi from ${vm}" --quiet; do
         echo "Trying to SSH into ${vm} failed. Sleeping for 5 seconds."
         sleep 5
     done
@@ -321,6 +321,7 @@ Anthos クラスタと Google Cloud と通信するためのキーの名前を�
 
 ```bash
 export ANTHOS_CLUSTER={{cluster}}
+export GOOGLE_CLOUD_PROJECT={{project-id}}
 export GOOGLE_APPLICATION_CREDENTIALS={{sa}}-creds.json
 ```
 
@@ -328,7 +329,7 @@ export GOOGLE_APPLICATION_CREDENTIALS={{sa}}-creds.json
 
 ```bash
 cd ${HOME}
-gcloud iam service-accounts keys create "${GOOGLE_APPLICATION_CREDENTIALS}" --iam-account={{sa}}@{{project-id}}.iam.gserviceaccount.com
+gcloud iam service-accounts keys create "${GOOGLE_APPLICATION_CREDENTIALS}" --iam-account={{sa}}@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com
 ```
 
 Anthos clusters on Bare Metal の設定雛形を出力し、中身を眺めてみましょう。
@@ -351,19 +352,19 @@ cloudOperationsServiceAccountKeyPath: ${GOOGLE_APPLICATION_CREDENTIALS}
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: cluster-admins
+  name: cluster-${ANTHOS_CLUSTER}
 ---
 apiVersion: baremetal.cluster.gke.io/v1
 kind: Cluster
 metadata:
   name: ${ANTHOS_CLUSTER}
-  namespace: cluster-admins
+  namespace: cluster-${ANTHOS_CLUSTER}
 spec:
   type: standalone
   profile: edge
   anthosBareMetalVersion: {{anthos-ver}}
   gkeConnect:
-    projectID: {{project-id}}
+    projectID: ${GOOGLE_CLOUD_PROJECT}
   controlPlane:
     nodePoolSpec:
       nodes:
@@ -387,8 +388,8 @@ spec:
       addresses:
       - 10.200.0.50-10.200.0.70
   clusterOperations:
-    projectID: {{project-id}}
-    location: asia-northeast1
+    projectID: ${GOOGLE_CLOUD_PROJECT}
+    location: {{region}}
     enableApplication: true
     disableCloudAuditLogging: false
   storage:
@@ -409,8 +410,8 @@ spec:
 apiVersion: baremetal.cluster.gke.io/v1
 kind: NodePool
 metadata:
-  name: node-pool-1
-  namespace: cluster-standalone1
+  name: nodepool-1
+  namespace: cluster-${ANTHOS_CLUSTER}
 spec:
   clusterName: ${ANTHOS_CLUSTER}
   nodes:
@@ -421,8 +422,6 @@ EOF
 ## スタンドアロン クラスタの作成
 
 **（管理ワークステーション上で実行してください）**
-
-![Anthos](https://raw.github.com/wiki/pottava/google-cloud-tutorials/anthos-baremetal/1-5.png)
 
 以下コマンドを実行し、スタンドアロン クラスタを作成します。クラスタ構築には 20 分弱かかります。
 
@@ -448,6 +447,7 @@ gcloud compute ssh {{vm-workst}} --tunnel-through-iap
 
 ```bash
 export ANTHOS_CLUSTER={{cluster}}
+export GOOGLE_CLOUD_PROJECT={{project-id}}
 export GOOGLE_APPLICATION_CREDENTIALS={{sa}}-creds.json
 ```
 
@@ -477,18 +477,18 @@ kubectl get nodes
 テスト用アプリケーションをデプロイし、挙動を確認してみます。
 
 ```bash
-kubectl create deployment web --image=nginx:1.19.6-alpine
+kubectl create deployment web --image=nginx:alpine
 kubectl expose deployment web --name web --type LoadBalancer --port 80
-kubectl get svc -w
+kubectl get svc,deployment,po
 ```
 
 外部アクセス用 IP アドレスがアサインされたら `Ctrl + C` で watch を中断し、実際に HTTP アクセスしてみましょう。
 
 ```bash
-curl -iXGET $(kubectl get svc -l app=web -o jsonpath="{.items[0].status.loadBalancer.ingress[0].ip}")
+curl -IXGET $(kubectl get svc -l app=web -o jsonpath="{.items[0].status.loadBalancer.ingress[0].ip}")
 ```
 
-## Google Cloud コンソールへの権限付与
+## クラウド ユーザへのアクセス許可
 
 **（管理ワークステーション上で実行してください）**
 
@@ -498,61 +498,75 @@ curl -iXGET $(kubectl get svc -l app=web -o jsonpath="{.items[0].status.loadBala
 
 クラスタ一覧の通知欄に、警告マークとともに `クラスタにログイン` と表示されているかと思います。
 
-これは Google Cloud 以外で構築された Anthos クラスタの場合、実際のワークロードは追加で権限を付与しない限りコンソールから値を参照できない仕組みとなっているためです。具体的な手順は [こちら](https://cloud.google.com/anthos/multicluster-management/console/logging-in?hl=ja) にもありますが、以下それに従い、クラスタのより詳細な情報を Google Cloud へ連携してみます。
+これは Google Cloud 以外で構築された Anthos クラスタの場合、実際のワークロードは追加で権限を付与しない限りコンソールから値を参照できない仕組みとなっているためです。具体的な手順は [こちら](https://cloud.google.com/anthos/multicluster-management/console/logging-in?hl=ja) にもありますが、以下それに従い進めます。
 
-### **Kubernetes クラスタロールの作成**
+## クラウド ユーザへのアクセス許可: 1. 権限借用ポリシーの設定
 
-ロールベースのアクセス制御（RBAC）のためのカスタム ロールを作成します。クラスタのノード、永続ボリューム、ストレージ クラスに対する get、list、watch 権限をユーザーに付与します。
+クラウドにログインしているユーザーのメールアドレスを指定し
+
+```bash
+USER_ACCOUNT=
+```
+
+connect-agent が内部的に利用しているサービス アカウントへユーザに成り代わる権限を付与します。
 
 ```text
-cat <<EOF > cloud-console-reader.yaml
+cat << EOF > impersonate.yaml
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: cloud-console-reader
+  name: gateway-impersonate
 rules:
 - apiGroups: [""]
-  resources: ["nodes", "persistentvolumes"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: ["storage.k8s.io"]
-  resources: ["storageclasses"]
-  verbs: ["get", "list", "watch"]
+  resourceNames:
+  - ${USER_ACCOUNT}
+  resources:
+  - users
+  verbs:
+  - impersonate
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: gateway-impersonate
+roleRef:
+  kind: ClusterRole
+  name: gateway-impersonate
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: connect-agent-sa
+  namespace: gke-connect
 EOF
-kubectl apply -f cloud-console-reader.yaml
+kubectl apply -f impersonate.yaml
 ```
 
-### **Kubernetes サービス アカウント（KSA）の作成**
+## クラウド ユーザへのアクセス許可: 2. ユーザへの RBAC 設定
 
-サービス アカウントを作成し
+ここでは例として cluster-admin ロールを付与しますが、実運用においては各ユーザーに対して適切な権限を設定してください。
 
-```bash
-KSA_NAME=abm-console-service-account
-kubectl create serviceaccount "${KSA_NAME}"
+```text
+cat << EOF > admin-permission.yaml
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: gateway-cluster-admin
+subjects:
+- kind: User
+  name: ${USER_ACCOUNT}
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+EOF
+kubectl apply -f admin-permission.yaml
 ```
 
-view と先ほど作った cloud-console-reader カスタム ロールを関連付けます。
+## クラウド ユーザへのアクセス許可: 3. **クラスタへのログイン**
 
-```bash
-kubectl create clusterrolebinding cloud-console-reader-binding --clusterrole cloud-console-reader --serviceaccount "default:${KSA_NAME}"
-kubectl create clusterrolebinding cloud-console-view-binding --clusterrole view --serviceaccount "default:${KSA_NAME}"
-kubectl create clusterrolebinding cloud-console-cluster-admin-binding --clusterrole cluster-admin --serviceaccount "default:${KSA_NAME}"
-```
-
-サービス アカウント（KSA）のトークンを取得しましょう。
-
-```bash
-SECRET_NAME=$(kubectl get serviceaccount "${KSA_NAME}" -o jsonpath='{$.secrets[0].name}') 
-kubectl get secret "${SECRET_NAME}" -o jsonpath='{$.data.token}' | base64 --decode
-echo ''
-```
-
-### **クラスタへのログイン**
-
-1. Cloud コンソールにもどり、登録済みクラスタの横にある `ログイン` ボタンをクリックします
-2. `トークン` を選択して、フィールドに KSA のトークンを入力し、`ログイン` をクリックします
+1. Cloud コンソールにもどり、登録済みクラスタの横にある `ログイン` ボタンをクリック
+2. `Google ID を使用してログインします` が選択されていることを確認し、`ログイン` をクリック
 3. クラスタ名の左側のアイコンが緑色になり `ワークロード` などが参照できるようになります
-
-もしトークンが不正だとエラーがでた場合は、コピーした**トークンに改行文字列が入っている可能性があります**。改行のないように整形してから再度登録をお試しください。
 
 ## Cloud Logging & Cloud Monitoring での確認
 
@@ -560,7 +574,7 @@ echo ''
 
 <walkthrough-menu-navigation sectionId="MONITORING_SECTION"></walkthrough-menu-navigation>
 
-左側のメニューから <walkthrough-spotlight-pointer cssSelector="#cfctest-section-nav-item-dashboards">ダッシュボード</walkthrough-spotlight-pointer> を選びます。
+左側のメニューから <walkthrough-spotlight-pointer cssSelector="#cfctest-section-nav-item-stackdriver_dashboards">ダッシュボード</walkthrough-spotlight-pointer> を選びます。
 
 - Anthos cluster control plane status: コントロール プレーンのステータス
 - Anthos cluster node status: ノードステータス
@@ -568,9 +582,7 @@ echo ''
 
 が確認できます。実際にどんな値がみれるのか、探検してみてください。
 
-## チャレンジ問題 1: Cloud Logging でのアプリログ確認
-
-![チャレンジ問題 1](https://raw.github.com/wiki/pottava/google-cloud-tutorials/anthos-baremetal/cloud-logging.png)
+## Cloud Logging でのアプリログ確認
 
 標準出力にログを出すアプリをデプロイし、Cloud Logging からそのログを確認してみましょう。
 
@@ -580,11 +592,11 @@ echo ''
 
 <walkthrough-menu-navigation sectionId="LOGS_SECTION"></walkthrough-menu-navigation>
 
-## チャレンジ問題 2: User Cluster の追加
+以下をクエリとして指定し `Run query` をクリックしてみましょう。
 
-![チャレンジ問題 2](https://raw.github.com/wiki/pottava/google-cloud-tutorials/anthos-baremetal/challenge.png)
-
-図のように、User Cluster を追加してみましょう！[こちら](https://cloud.google.com/anthos/clusters/docs/bare-metal/1.7/installing/creating-clusters/user-cluster-creation#create-user-config) をヒントに進めてみてくだい。
+```text
+resource.type="k8s_container" resource.labels.cluster_name="{{cluster}}" resource.labels.namespace_name="default" resource.labels.container_name="nginx"
+```
 
 ## これで終わりです
 
