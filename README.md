@@ -1,10 +1,10 @@
 # Anthos clusters on bare metal ハンズオン
 
-## v1.8 の構築と ACM によるクラスタ運用
+## v1.10 の構築と ACM によるクラスタ運用
 
 このチュートリアルでは以下を体験できます。
 
-- [Anthos clusters on bare metal](https://cloud.google.com/anthos/clusters/docs/bare-metal/1.8/concepts/about-bare-metal?hl=ja) クラスタの構築
+- [Anthos clusters on bare metal](https://cloud.google.com/anthos/clusters/docs/bare-metal/latest/concepts/about-bare-metal?hl=ja) クラスタの構築
 - [ACM Config Sync](https://cloud.google.com/anthos-config-management/docs/config-sync-overview?hl=ja) による設定の同期
 - [ACM Policy Controller](https://cloud.google.com/anthos-config-management/docs/concepts/policy-controller?hl=ja) によるポリシー制御
 
