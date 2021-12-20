@@ -7,7 +7,7 @@
 <walkthrough-watcher-constant key="subnet-range" value="10.128.0.0/16"></walkthrough-watcher-constant>
 <walkthrough-watcher-constant key="sa" value="sa-baremetal"></walkthrough-watcher-constant>
 <walkthrough-watcher-constant key="cluster" value="baremetal-trial"></walkthrough-watcher-constant>
-<walkthrough-watcher-constant key="anthos-ver" value="1.8.3"></walkthrough-watcher-constant>
+<walkthrough-watcher-constant key="anthos-ver" value="1.10.0"></walkthrough-watcher-constant>
 <walkthrough-watcher-constant key="vm-workst" value="workstation"></walkthrough-watcher-constant>
 <walkthrough-watcher-constant key="vm-admin" value="anthos-admin"></walkthrough-watcher-constant>
 <walkthrough-watcher-constant key="vm-worker" value="anthos-worker"></walkthrough-watcher-constant>
@@ -16,7 +16,7 @@
 
 [Anthos clusters on Bare Metal](https://cloud.google.com/anthos/clusters/docs/bare-metal?hl=ja) を Google Compute Engine 上に構築する手順です。
 
-本手順では Edge プロファイルを有効化した[スタンドアロン クラスタ](https://cloud.google.com/anthos/clusters/docs/bare-metal/1.8/installing/creating-clusters/standalone-cluster-creation?hl=ja)構成をとります。
+本手順では Edge プロファイルを有効化した[スタンドアロン クラスタ](https://cloud.google.com/anthos/clusters/docs/bare-metal/latest/installing/creating-clusters/standalone-cluster-creation?hl=ja)構成をとります。
 
 **所要時間**: 約 45 分
 
@@ -401,8 +401,6 @@ spec:
       storageClassName: local-shared
       numPVUnderSharedPath: 5
   nodeConfig:
-    autoRepair:
-      enabled: true
     podDensity:
       maxPodsPerNode: 110
     containerRuntime: containerd
