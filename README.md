@@ -16,7 +16,7 @@
 
 ```sh
 cloudshell_open --page "shell" \
-    --repo_url "https://github.com/google-cloud-japan/appdev-anthos-baremetal-handson.git" \
+    --repo_url "https://github.com/tyorikan/appdev-anthos-baremetal-handson.git" \
     --tutorial "anthos-baremetal/01-setup.md"
 ```
 
