@@ -401,8 +401,6 @@ spec:
       storageClassName: local-shared
       numPVUnderSharedPath: 5
   nodeConfig:
-    autoRepair:
-      enabled: true
     podDensity:
       maxPodsPerNode: 110
     containerRuntime: containerd
